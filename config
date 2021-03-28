@@ -1,6 +1,6 @@
-BLOG_TITLE:=Based Cooking
-BLOG_REMOTE:=/var/www/based.cooking
+BLOG_TITLE:=syg's cook book
+BLOG_REMOTE:=vps:/var/www/pedantic.software/syg/cook
 BLOG_DATE_FORMAT_INDEX:=%F
 BLOG_DATE_FORMAT:=%F
-BLOG_SRC:=src
-BLOG_URL_ROOT:=https://based.cooking/
+BLOG_SRC:=recipes/src
+BLOG_URL_ROOT:=https://sgauthier.fr/cook

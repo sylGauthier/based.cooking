@@ -18,7 +18,7 @@ BLOG_SRC ?= articles
 
 .PHONY: help init build deploy clean taglist
 
-ARTICLES = $(shell git ls-tree HEAD --name-only -- $(BLOG_SRC)/*.md 2>/dev/null)
+ARTICLES = $(addprefix $(BLOG_SRC)/, $(shell git -C $(BLOG_SRC) ls-tree HEAD --name-only 2>/dev/null | sed -n '/\.md$$/p'))
 TAGFILES = $(patsubst $(BLOG_SRC)/%.md,tags/%,$(ARTICLES))
 
 help:
@@ -84,7 +84,7 @@ blog/index.html: index.md $(ARTICLES) $(TAGFILES) $(addprefix templates/,$(addsu
 	echo $(ARTICLES); \
 	for f in $(ARTICLES); do \
 		printf '%s ' "$$f"; \
-		git log -n 1 --diff-filter=A --date="format:%s $(BLOG_DATE_FORMAT_INDEX)" --pretty=format:'%ad%n' -- "$$f"; \
+		git -C $(BLOG_SRC) log -n 1 --diff-filter=A --date="format:%s $(BLOG_DATE_FORMAT_INDEX)" --pretty=format:'%ad%n' -- "`basename $$f`"; \
 	done | sort | cut -d" " -f1,3- | while IFS=" " read -r FILE DATE; do \
 		"$$first" || envsubst < templates/article_separator.html; \
 		URL="`printf '%s' "\$$FILE" | sed 's,^$(BLOG_SRC)/\(.*\).md,\1,'`.html" \
@@ -119,7 +119,7 @@ blog/@%.html: $(TAGFILES) $(addprefix templates/,$(addsuffix .html,header tag_in
 	first=true; \
 	for f in $(shell awk '$$0 == "$*" { gsub("tags", "$(BLOG_SRC)", FILENAME); print FILENAME  ".md"; nextfile; }' $(TAGFILES)); do \
 		printf '%s ' "$$f"; \
-		git log -n 1 --diff-filter=A --date="format:%s $(BLOG_DATE_FORMAT_INDEX)" --pretty=format:'%ad%n' -- "$$f"; \
+		git -C $(BLOG_SRC) log -n 1 --diff-filter=A --date="format:%s $(BLOG_DATE_FORMAT_INDEX)" --pretty=format:'%ad%n' -- "`basename $$f`"; \
 	done | sort | cut -d" " -f1,3- | while IFS=" " read -r FILE DATE; do \
 		"$$first" || envsubst < templates/article_separator.html; \
 		URL="`printf '%s' "\$$FILE" | sed 's,^$(BLOG_SRC)/\(.*\).md,\1,'`.html" \
@@ -139,11 +139,11 @@ blog/%.html: $(BLOG_SRC)/%.md $(addprefix templates/,$(addsuffix .html,header ar
 	export TITLE; \
 	PAGE_TITLE="$${TITLE} Recipe — $(BLOG_TITLE)"; \
 	export PAGE_TITLE; \
-	AUTHOR="$(shell git log --format="%an" -- "$<" | tail -n 1)"; \
+	AUTHOR="$(shell git -C $(BLOG_SRC) log --format="%an" -- "`basename $<`" | tail -n 1)"; \
 	export AUTHOR; \
-	DATE_POSTED="$(shell git log -n 1 --diff-filter=A --date="format:$(BLOG_DATE_FORMAT)" --pretty=format:'%ad' -- "$<")"; \
+	DATE_POSTED="$(shell git -C $(BLOG_SRC) log -n 1 --diff-filter=A --date="format:$(BLOG_DATE_FORMAT)" --pretty=format:'%ad' -- "`basename $<`")"; \
 	export DATE_POSTED; \
-	DATE_EDITED="$(shell git log -n 1 --date="format:$(BLOG_DATE_FORMAT)" --pretty=format:'%ad' -- "$<")"; \
+	DATE_EDITED="$(shell git -C $(BLOG_SRC) log -n 1 --date="format:$(BLOG_DATE_FORMAT)" --pretty=format:'%ad' -- "`basename $<`")"; \
 	export DATE_EDITED; \
 	TAGS="$(shell grep -i '^; *tags:' "$<" | cut -d: -f2- | paste -sd ',')"; \
 	export TAGS; \
@@ -165,7 +165,7 @@ blog/rss.xml: $(ARTICLES)
 		"$(BLOG_TITLE)" "$(BLOG_URL_ROOT)" "$(BLOG_DESCRIPTION)" > $@
 	for f in $(ARTICLES); do \
 		printf '%s ' "$$f"; \
-		git log -n 1 --diff-filter=A --date="format:%s %a, %d %b %Y %H:%M:%S %z" --pretty=format:'%ad%n' -- "$$f"; \
+		git -C $(BLOG_SRC) log -n 1 --diff-filter=A --date="format:%s %a, %d %b %Y %H:%M:%S %z" --pretty=format:'%ad%n' -- "`basename $$f`"; \
 	done | sort -k2nr | head -n $(BLOG_FEED_MAX) | cut -d" " -f1,3- | while IFS=" " read -r FILE DATE; do \
 		printf '<item>\n<title>%s</title>\n<link>%s</link>\n<guid>%s</guid>\n<pubDate>%s</pubDate>\n<description><![CDATA[%s]]></description>\n</item>\n' \
 			"`head -n 1 $$FILE | sed 's/^# //'`" \
@@ -181,14 +181,14 @@ blog/atom.xml: $(ARTICLES)
 		"$(BLOG_TITLE)" "$(BLOG_DESCRIPTION)" "$(shell date +%Y-%m-%dT%H:%M:%SZ)" "$(BLOG_URL_ROOT)" "$(BLOG_URL_ROOT)atom.xml" "$(BLOG_URL_ROOT)/atom.xml" > $@
 	for f in $(ARTICLES); do \
 		printf '%s ' "$$f"; \
-		git log -n 1 --diff-filter=A --date="format:%s %Y-%m-%dT%H:%M:%SZ" --pretty=format:'%ad %aN%n' -- "$$f"; \
+		git -C $(BLOG_SRC) log -n 1 --diff-filter=A --date="format:%s %Y-%m-%dT%H:%M:%SZ" --pretty=format:'%ad %aN%n' -- "`basename $$f`"; \
 	done | sort -k2nr | head -n $(BLOG_FEED_MAX) | cut -d" " -f1,3- | while IFS=" " read -r FILE DATE AUTHOR; do \
 		printf '<entry>\n<title type="text">%s</title>\n<link rel="alternate" type="text/html" href="%s"/>\n<id>%s</id>\n<published>%s</published>\n<updated>%s</updated>\n<author><name>%s</name></author>\n<summary type="html"><![CDATA[%s]]></summary>\n</entry>\n' \
 			"`head -n 1 $$FILE | sed 's/^# //'`" \
 			"$(BLOG_URL_ROOT)`basename $$FILE | sed 's/\.md/\.html/'`" \
 			"$(BLOG_URL_ROOT)`basename $$FILE | sed 's/\.md/\.html/'`" \
 			"$$DATE" \
-			"`git log -n 1 --date="format:%Y-%m-%dT%H:%M:%SZ" --pretty=format:'%ad' -- "$$FILE"`" \
+			"`git -C $(BLOG_SRC) log -n 1 --date="format:%Y-%m-%dT%H:%M:%SZ" --pretty=format:'%ad' -- "$$(basename $$FILE)"`" \
 			"$$AUTHOR" \
 			"`markdown < $$FILE`"; \
 	done >> $@
