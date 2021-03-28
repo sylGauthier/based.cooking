@@ -6,3 +6,6 @@ links, emojis and other poor design decisions.
 Credits are given at the bottom of each recipe, the overwhelming majority of
 them are not mine, but some are heavily reformatted/corrected from their
 original publication on based.cooking.
+
+- Recipes available [on github](https://github.com/sylGauthier/recipes).
+- Website's source code also available [on github](https://github.com/sylGauthier/cookbook).
